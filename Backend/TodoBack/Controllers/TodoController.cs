@@ -2,7 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using TodoBack.Domain;
 using TodoBack.Dto;
-using TodoBack.Services;
+using TodoBack.Infrastructure;
+using TodoBack.Repositories;
 
 namespace TodoBack.Controllers
 {
@@ -10,17 +11,19 @@ namespace TodoBack.Controllers
     [ApiController]
     public class TodoController : ControllerBase
     {
-        private readonly ITodoService _todoService;
+        private readonly ITodoRepository _todoRepository;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public TodoController(ITodoService todoService)
+        public TodoController(ITodoRepository todoRepository, IUnitOfWork unitOfWork)
         {
-            _todoService = todoService;
+            _todoRepository = todoRepository;
+            _unitOfWork = unitOfWork;
         }
 
         [HttpGet]
         public List<TodoDto> GetAll()
         {
-            List<Todo> todos = _todoService.GetTodos();
+            List<Todo> todos = _todoRepository.GetTodos();
 
             return todos.Select(todo => new TodoDto()
             {
@@ -35,8 +38,18 @@ namespace TodoBack.Controllers
         {
             try
             {
-                int id = _todoService.CreateTodo(todoDto);
-                return Ok(id);
+                Todo todo = new Todo()
+                {
+                    Id = 0,
+                    Title = todoDto.Title,
+                    IsDone = todoDto.IsDone,
+                };
+
+                _todoRepository.Create(todo);
+
+                _unitOfWork.Commit();
+
+                return Ok(todo.Id);
             }
             catch (Exception ex)
             {
@@ -50,12 +63,14 @@ namespace TodoBack.Controllers
         {
             try
             {
-                if (todoDto.Id == null)
+                _todoRepository.Update(new Todo()
                 {
-                    throw new Exception("Id can not be null");
-                }
+                    Id = todoDto.Id,
+                    Title = todoDto.Title,
+                    IsDone = true
+                });
 
-                _todoService.CompleteTodo((int)todoDto.Id);
+                _unitOfWork.Commit();
             }
             catch (Exception ex)
             {
@@ -76,7 +91,9 @@ namespace TodoBack.Controllers
                     throw new Exception("Id can not be negative or 0");
                 }
 
-                _todoService.DeleteTodo(id);
+                _todoRepository.Delete(id);
+
+                _unitOfWork.Commit();
             }
             catch (Exception ex)
             {

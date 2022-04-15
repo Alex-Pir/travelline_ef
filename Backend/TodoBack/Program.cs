@@ -1,4 +1,6 @@
-using TodoBack.Services;
+using Microsoft.EntityFrameworkCore;
+using TodoBack.Infrastructure;
+using TodoBack.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,8 +17,10 @@ builder.Services.AddCors(options =>
         });
 });
 
-//string connectionString = builder.Configuration.GetConnectionString("TodoConnection");
-builder.Services.AddScoped<ITodoService, TodoService>();
+string connectionString = builder.Configuration.GetConnectionString("TodoConnection");
+builder.Services.AddDbContext<TodoDbContext>(x => x.UseSqlServer(connectionString));
+builder.Services.AddScoped<global::TodoBack.Repositories.ITodoRepository, global::TodoBack.Repositories.TodoRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 builder.Services.AddControllers();
 
